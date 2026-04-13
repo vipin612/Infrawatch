@@ -7,6 +7,7 @@ on:
     branches: [main]
 
 jobs:
+  # ── Job 1: Test ──────────────────────────────────────────────────────────────
   test:
     name: Run Tests
     runs-on: ubuntu-latest
@@ -25,10 +26,12 @@ jobs:
       - name: Run backend tests
         run: cd backend && npm test --if-present
 
+  # ── Job 2: Build & Push Docker Images ────────────────────────────────────────
   build:
     name: Build & Push Images
     runs-on: ubuntu-latest
     needs: test
+    # Only run on actual pushes, not pull requests
     if: github.event_name == 'push'
 
     steps:
@@ -66,26 +69,23 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # ── Job 3: Deploy to Kubernetes (Minikube) ───────────────────────────────────
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: build
+    # Only deploy when pushing to main branch
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
+      - name: Start Minikube
+        uses: medyagh/setup-minikube@master
         with:
-          version: 'v1.29.0'
-
-      - name: Configure kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBECONFIGSECRET }}" | base64 --decode > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
+          minikube-version: 'latest'
+          driver: docker
 
       - name: Verify cluster connection
         run: kubectl cluster-info
@@ -94,6 +94,13 @@ jobs:
         run: |
           sed -i "s|YOUR_DOCKERHUB_USERNAME/infrawatch-backend:latest|${{ secrets.SECRET }}/infrawatch-backend:${{ github.sha }}|g" k8s/backend-deployment.yaml
           sed -i "s|YOUR_DOCKERHUB_USERNAME/infrawatch-frontend:latest|${{ secrets.SECRET }}/infrawatch-frontend:${{ github.sha }}|g" k8s/frontend-deployment.yaml
+
+      - name: Verify sed replacements worked
+        run: |
+          echo "=== Backend manifest image line ==="
+          grep "image:" k8s/backend-deployment.yaml
+          echo "=== Frontend manifest image line ==="
+          grep "image:" k8s/frontend-deployment.yaml
 
       - name: Deploy all manifests to Kubernetes
         run: |
@@ -104,11 +111,15 @@ jobs:
 
       - name: Wait for rollout to complete
         run: |
-          kubectl rollout status deployment/infrawatch-backend --timeout=180s
-          kubectl rollout status deployment/infrawatch-frontend --timeout=180s
+          kubectl rollout status deployment/infrawatch-backend --timeout=300s
+          kubectl rollout status deployment/infrawatch-frontend --timeout=300s
 
       - name: Deployment summary
         run: |
+          echo "========================================="
           echo "Deployment complete!"
+          echo "Backend : ${{ secrets.SECRET }}/infrawatch-backend:${{ github.sha }}"
+          echo "Frontend: ${{ secrets.SECRET }}/infrawatch-frontend:${{ github.sha }}"
+          echo "========================================="
           kubectl get pods
           kubectl get svc
