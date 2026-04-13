@@ -84,7 +84,7 @@ jobs:
       - name: Configure kubeconfig
         run: |
           mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBECONFIGSECRET }}" > $HOME/.kube/config
+          echo "${{ secrets.KUBECONFIGSECRET }}" | base64 --decode > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
       - name: Verify cluster connection
