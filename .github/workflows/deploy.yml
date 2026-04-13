@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 env:
-  BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/infrawatch-backend
-  FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/infrawatch-frontend
+  BACKEND_IMAGE: ${{ secrets.SECRET }}/infrawatch-backend
+  FRONTEND_IMAGE: ${{ secrets.SECRET }}/infrawatch-frontend
 
 jobs:
   # ── Job 1: Test ──────────────────────────────────────────────────────────────
@@ -51,8 +51,8 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.SECRET }}
+          password: ${{ secrets.DOCKERSECRET }}
 
       - name: Build & push backend image
         uses: docker/build-push-action@v5
@@ -98,7 +98,7 @@ jobs:
         # Decode the base64 kubeconfig secret and write to ~/.kube/config
         run: |
           mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > $HOME/.kube/config
+          echo "${{ secrets.KUBECONFIGSECRET }}" | base64 --decode > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
 
       - name: Verify cluster connection
@@ -108,8 +108,8 @@ jobs:
       - name: Update image tags in K8s manifests
         # Replace the placeholder image name with the real one + commit SHA
         run: |
-          sed -i "s|YOUR_DOCKERHUB_USERNAME/infrawatch-backend:latest|${{ env.BACKEND_IMAGE }}:${{ github.sha }}|g" k8s/backend-deployment.yaml
-          sed -i "s|YOUR_DOCKERHUB_USERNAME/infrawatch-frontend:latest|${{ env.FRONTEND_IMAGE }}:${{ github.sha }}|g" k8s/frontend-deployment.yaml
+          sed -i "s|SECRET/infrawatch-backend:latest|${{ env.BACKEND_IMAGE }}:${{ github.sha }}|g" k8s/backend-deployment.yaml
+          sed -i "s|SECRET/infrawatch-frontend:latest|${{ env.FRONTEND_IMAGE }}:${{ github.sha }}|g" k8s/frontend-deployment.yaml
 
       - name: Deploy all manifests to Kubernetes
         run: |
