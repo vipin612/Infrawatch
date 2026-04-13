@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: infrawatch-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    networks:
+      - infrawatch-net
+
+  frontend:
+    build: ./frontend
+    container_name: infrawatch-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - infrawatch-net
+
+networks:
+  infrawatch-net:
+    driver: bridge
