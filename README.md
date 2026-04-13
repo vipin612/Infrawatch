@@ -517,7 +517,7 @@ image: YOUR_DOCKERHUB_USERNAME/infrawatch-backend:latest
 
 <div align="center">
 
-Made with 🟠 by Vipin Sharma(https://github.com/YOUR_GITHUB_USERNAME)
+Made with 🟠 by Vipin Sharma
 
 ⭐ Star this repo if it helped you!
 
